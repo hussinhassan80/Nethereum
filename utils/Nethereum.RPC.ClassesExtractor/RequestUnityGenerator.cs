@@ -30,8 +30,11 @@ using System.Text;
 using Nethereum.JsonRpc.Client;
 using Newtonsoft.Json;
 using System.Collections;
+using Nethereum.Hex.HexTypes;
+using Nethereum.RPC.Eth.DTOs;
+using System.Collections.Generic;
 
-namespace Nethereum.JsonRpc.UnityClient
+namespace Nethereum.Unity.Rpc
 {{
 
 {Generate(requestInfoCollection)}
@@ -54,6 +57,10 @@ namespace Nethereum.JsonRpc.UnityClient
         {
             var className = requestInfo.RequestType.Name;
             var classTypeName = requestInfo.RequestType.FullName;
+            if (classTypeName.StartsWith("Nethereum."))
+            {
+                classTypeName = classTypeName.Substring("Nethereum.".Length);
+            }
             var returnType = requestInfo.ReturnType.FullName;
             var parameters = requestInfo.BuildRequestParameters.FirstOrDefault(z => z.FirstOrDefault(t => t.IsOptional == true && t.Name == "id") != null);
             var paramMethod = string.Join(", ", parameters.OrderBy(y => y.Position).Where(x => x.Name != "id").Select(
@@ -64,11 +71,16 @@ namespace Nethereum.JsonRpc.UnityClient
             //forcing null the default value
 
             return $@"
-    public class {className}UnityRequest:UnityRpcWebRequest<{returnType}>
+    public class {className}UnityRequest : UnityRpcRequest<{returnType}>
     {{
         private readonly {classTypeName} _{FirstLetterToLower(className)};
 
-        public {className}UnityRequest(string url, JsonSerializerSettings jsonSerializerSettings = null):base(url, jsonSerializerSettings)
+        public {className}UnityRequest(string url, JsonSerializerSettings jsonSerializerSettings = null, Dictionary<string, string> requestHeaders = null):base(url, jsonSerializerSettings, requestHeaders)
+        {{
+            _{FirstLetterToLower(className)} = new {classTypeName}(null);
+        }}
+
+        public {className}UnityRequest(IUnityRpcRequestClientFactory unityRpcClientFactory):base(unityRpcClientFactory)
         {{
             _{FirstLetterToLower(className)} = new {classTypeName}(null);
         }}

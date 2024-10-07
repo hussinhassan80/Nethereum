@@ -1,6 +1,10 @@
-﻿using System;
+﻿using Nethereum.RLP;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Text;
 
 namespace Nethereum.Util
 {
@@ -60,6 +64,178 @@ namespace Nethereum.Util
             for (var i = 0; i < length; i++)
                 result[i] = (byte) (a[i] ^ b[i]);
             return result;
+        }
+        public static byte[] PadTo32Bytes(this byte[] bytesToPad)
+        {
+            if (bytesToPad.Length >= 32) return bytesToPad;
+            return PadBytes(bytesToPad, 32);
+        }
+
+        public static byte[] PadTo128Bytes(this byte[] bytesToPad)
+        {
+            if (bytesToPad.Length >= 128) return bytesToPad;
+            return PadBytes(bytesToPad, 128);
+        }
+
+        public static byte[] PadBytes(this byte[] bytesToPad, int numberOfBytes)
+        {
+            var ret = new byte[numberOfBytes];
+
+            for (var i = 0; i < ret.Length; i++)
+                ret[i] = 0;
+            Array.Copy(bytesToPad, 0, ret, numberOfBytes - bytesToPad.Length, bytesToPad.Length);
+
+            return ret;
+        }
+
+        public static byte[] PadBytesLeft(this byte[] bytesToPad, int numberOfBytes)
+        {
+            if(numberOfBytes < bytesToPad.Length) throw new ArgumentException("Cannot pad to a size smaller than the original size");
+
+            return PadBytes(bytesToPad, numberOfBytes);
+        }
+
+        public static byte[] PadBytesRight(this byte[] bytesToPad, int numberOfBytes)
+        {
+            var ret = new byte[numberOfBytes];
+
+            for (var i = 0; i < ret.Length; i++)
+                ret[i] = 0;
+            Array.Copy(bytesToPad, 0, ret, 0, bytesToPad.Length);
+
+            return ret;
+        }
+
+
+            public static byte[] ShiftLeft(this byte[] value, int shift)
+        {
+//#if NETCOREAPP2_0_OR_GREATER
+
+//                        var bitArray = new BitArray(value);
+//                        var returnByteArray = new byte[value.Length];
+//                        bitArray.LeftShift(shift);
+//                        bitArray.CopyTo(returnByteArray, 0);
+//                        return returnByteArray;
+//#else
+            byte[] newValue = new byte[value.Length];
+            byte overflow = 0x00;
+
+            for (int i = value.Length - 1; i >= 0; i--)
+            {
+                int byteEndPosition = (i * 8) - shift + 7;
+                int resultBytePosition = byteEndPosition / 8;
+
+                if (byteEndPosition >= 0)
+                {
+                    newValue[resultBytePosition] = (byte)(value[i] << (shift % 8));
+                    newValue[resultBytePosition] |= overflow;
+                    overflow = (byte)(((value[i] << (shift % 8)) & 0xFF00) >> 8);
+                }
+            }
+
+            return newValue;
+//#endif
+        }
+
+
+
+       
+        public static byte[] ShiftRight(this byte[] value, int shift)
+        {
+//#if NETCOREAPP2_0_OR_GREATER
+
+//                        var bitArray = new BitArray(value);
+//                        var returnByteArray = new byte[value.Length];
+//                        bitArray.RightShift(shift);
+//                        bitArray.CopyTo(returnByteArray, 0);
+//                        return returnByteArray;
+//#else
+            byte[] newValue = new byte[value.Length];
+            byte overflow = 0x00;
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                int byteStartPosition = (i * 8) + shift;
+                int resultBytePosition = byteStartPosition / 8;
+
+                if (resultBytePosition < value.Length)
+                {
+                    newValue[resultBytePosition] = (byte)(value[i] >> (shift % 8));
+                    newValue[resultBytePosition] |= overflow;
+                    overflow = (byte)((value[i] << (8 - (shift % 8))) & 0xFF);
+                }
+            }
+
+            return newValue;
+//#endif
+        }
+
+        public static List<byte[]> SplitBytes(this byte[] bytes, int chunkSize = 32)
+        {
+            var result = new List<byte[]>();
+            int totalChunks = bytes.Length / chunkSize;
+
+            for (int i = 0; i < totalChunks; i++)
+            {
+                var chunk = new byte[chunkSize];
+                Array.Copy(bytes, i * chunkSize, chunk, 0, chunkSize);
+                result.Add(chunk);
+            }
+
+            return result;
+        }
+    }
+
+
+    public class ByteArrayComparer : IComparer<byte[]>, IEqualityComparer<byte[]>
+    {
+        public readonly static ByteArrayComparer Current = new ByteArrayComparer();
+
+        public int Compare(byte[] x, byte[] y)
+        {
+            if (x == null && y == null) return 0;
+            if (x == null) return -1;
+            if (y == null) return 1;
+
+            int result;
+            int min = Math.Min(x.Length, y.Length);
+            for (int index = 0; index < min; index++)
+            {
+                result = x[index].CompareTo(y[index]);
+                if (result != 0) return result;
+            }
+            return x.Count().CompareTo(y.Count());
+        }
+
+        public bool Equals(byte[] x, byte[] y)
+        {
+           return Compare(x, y) == 0;
+        }
+
+        public int GetHashCode(byte[] obj)
+        {
+            return new BigInteger(obj).GetHashCode();
+        }
+    }
+
+    public class ByteListComparer : IComparer<IList<byte>>
+    {
+        public readonly static ByteListComparer Current = new ByteListComparer();
+
+        public int Compare(IList<byte> x, IList<byte> y)
+        {
+            if (x == null && y == null) return 0;
+            if (x == null) return -1;
+            if (y == null) return 1;
+            
+            int result;
+            int min = Math.Min(x.Count, y.Count);
+            for (int index = 0; index < min; index++)
+            {
+                result = x[index].CompareTo(y[index]);
+                if (result != 0) return result;
+            }
+            return x.Count().CompareTo(y.Count());
         }
     }
 }

@@ -19,6 +19,16 @@ namespace Nethereum.Geth.RPC.Admin
         {
         }
 
+        public RpcRequest BuildRequest(string host, int port, string cors, string api, string vHosts, object id = null)
+        {
+            return base.BuildRequest(id, host, port, cors, api, vHosts);
+        }
+
+        public Task<bool> SendRequestAsync(string host, int port, string cors, string api, string vHosts, object id = null)
+        {
+            return base.SendRequestAsync(id, host, port, cors, api, vHosts);
+        }
+
         public RpcRequest BuildRequest(string host, int port, string cors, string api, object id = null)
         {
             return base.BuildRequest(id, host, port, cors, api);

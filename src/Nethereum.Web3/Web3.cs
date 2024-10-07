@@ -1,13 +1,21 @@
 ﻿using System;
 using System.Net.Http.Headers;
-using Common.Logging;
+
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP3_1_OR_GREATER || NET461_OR_GREATER || NET5_0_OR_GREATER
+using Microsoft.Extensions.Logging;
+#else
+using Nethereum.JsonRpc.Client;
+#endif
 using Nethereum.BlockchainProcessing.Services;
 using Nethereum.Contracts;
 using Nethereum.Contracts.Services;
 using Nethereum.JsonRpc.Client;
 using Nethereum.RPC;
 using Nethereum.RPC.Accounts;
+using Nethereum.RPC.DebugNode;
 using Nethereum.RPC.TransactionManagers;
+using Nethereum.RPC.TransactionReceipts;
+using Nethereum.Model;
 #if !LITE
 using Nethereum.Signer;
 #endif
@@ -20,30 +28,45 @@ namespace Nethereum.Web3
         private static readonly AddressUtil AddressUtil = new AddressUtil();
         private static readonly Sha3Keccack Sha3Keccack = new Sha3Keccack();
 
+        private void InitialiseDefaultTransactionVerificationAndRecovery()
+        {
+#if !LITE
+            if (TransactionManager.TransactionVerificationAndRecovery == null)
+            {
+                TransactionManager.TransactionVerificationAndRecovery = new TransactionVerificationAndRecoveryImp();
+            }
+#endif
+        }
+
         public Web3(IClient client)
         {
             Client = client;
             InitialiseInnerServices();
             InitialiseDefaultGasAndGasPrice();
+            InitialiseDefaultTransactionVerificationAndRecovery();
         }
 
         public Web3(IAccount account, IClient client) : this(client)
         {
             TransactionManager = account.TransactionManager;
             TransactionManager.Client = Client;
+            InitialiseDefaultTransactionVerificationAndRecovery();
+
         }
 
-        public Web3(string url = @"http://localhost:8545/", ILog log = null, AuthenticationHeaderValue authenticationHeader = null)
+        public Web3(string url = @"http://localhost:8545/", ILogger log = null, AuthenticationHeaderValue authenticationHeader = null)
         {
             InitialiseDefaultRpcClient(url, log, authenticationHeader);
             InitialiseInnerServices();
             InitialiseDefaultGasAndGasPrice();
+            InitialiseDefaultTransactionVerificationAndRecovery();
         }
 
-        public Web3(IAccount account, string url = @"http://localhost:8545/", ILog log = null, AuthenticationHeaderValue authenticationHeader = null) : this(url, log, authenticationHeader)
+        public Web3(IAccount account, string url = @"http://localhost:8545/", ILogger log = null, AuthenticationHeaderValue authenticationHeader = null) : this(url, log, authenticationHeader)
         {
             TransactionManager = account.TransactionManager;
             TransactionManager.Client = Client;
+            InitialiseDefaultTransactionVerificationAndRecovery();
         }
 
         public ITransactionManager TransactionManager
@@ -61,14 +84,28 @@ namespace Nethereum.Web3
         public INetApiService Net { get; private set; }
         public IPersonalApiService Personal { get; private set; }
         public IBlockchainProcessingService Processing { get; private set; }
+        public IDebugApiService Debug { get; private set; }
 
         public FeeSuggestionService FeeSuggestion { get; private set; }
+        public ITransactionReceiptService TransactionReceiptPolling
+        {
+            get
+            {
+                return TransactionManager?.TransactionReceiptService;
+            }
+            set
+            {
+                TransactionManager.TransactionReceiptService = value;
+            }
+        }
 
         private void InitialiseDefaultGasAndGasPrice()
         {
 #if !LITE
             TransactionManager.DefaultGas = LegacyTransaction.DEFAULT_GAS_LIMIT;
             TransactionManager.DefaultGasPrice = LegacyTransaction.DEFAULT_GAS_PRICE;
+
+           
 #endif
         }
 
@@ -76,7 +113,7 @@ namespace Nethereum.Web3
         public static string GetAddressFromPrivateKey(string privateKey)
         {
 
-            return EthECKey.GetPublicAddress(privateKey);
+            return EthECKey.GetPublicAddress(privateKey);  
 
         }
 #endif
@@ -109,9 +146,10 @@ namespace Nethereum.Web3
             Net = new NetApiService(Client);
             Personal = new PersonalApiService(Client);
             FeeSuggestion = new FeeSuggestionService(Client);
+            Debug = new DebugApiService(Client);
         }
 
-        private void InitialiseDefaultRpcClient(string url, ILog log, AuthenticationHeaderValue authenticationHeader)
+        private void InitialiseDefaultRpcClient(string url, ILogger log, AuthenticationHeaderValue authenticationHeader)
         {
             Client = new RpcClient(new Uri(url), authenticationHeader, null, null, log);
         }

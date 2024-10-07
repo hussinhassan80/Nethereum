@@ -5,8 +5,11 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP3_1_OR_GREATER || NET461_OR_GREATER || NET5_0_OR_GREATER
+using Microsoft.Extensions.Logging;
+#endif
 using Nethereum.JsonRpc.Client.RpcMessages;
+using Nethereum.JsonRpc.Client;
 using Newtonsoft.Json;
 
 namespace Nethereum.JsonRpc.Client
@@ -14,11 +17,13 @@ namespace Nethereum.JsonRpc.Client
     public class RpcClient : ClientBase
     {
         private const int NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT = 60;
+        private const int NUMBER_OF_MINUTES_TO_POOL_CONNECTIONS = 10;
+        private const int NUMBER_OF_MINUTES_TO_IDLE_CONNECTIONS = 5;
         public static int MaximumConnectionsPerServer { get; set; } = 20;
         private readonly AuthenticationHeaderValue _authHeaderValue;
         private readonly Uri _baseUrl;
         private readonly HttpClientHandler _httpClientHandler;
-        private readonly ILog _log;
+        private readonly ILogger _log;
         private readonly JsonSerializerSettings _jsonSerializerSettings;
         private volatile bool _firstHttpClient;
         private HttpClient _httpClient;
@@ -28,7 +33,7 @@ namespace Nethereum.JsonRpc.Client
         private readonly object _lockObject = new object();
 
         public RpcClient(Uri baseUrl, AuthenticationHeaderValue authHeaderValue = null,
-            JsonSerializerSettings jsonSerializerSettings = null, HttpClientHandler httpClientHandler = null, ILog log = null)
+            JsonSerializerSettings jsonSerializerSettings = null, HttpClientHandler httpClientHandler = null, ILogger log = null)
         {
             _baseUrl = baseUrl;
 
@@ -67,8 +72,8 @@ namespace Nethereum.JsonRpc.Client
 #elif NETCOREAPP2_1 || NETCOREAPP3_1 || NET5_0_OR_GREATER
                 return new SocketsHttpHandler
                 {
-                    PooledConnectionLifetime = new TimeSpan(0, NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT, 0),
-                    PooledConnectionIdleTimeout = new TimeSpan(0, NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT, 0),
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(NUMBER_OF_MINUTES_TO_POOL_CONNECTIONS),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(NUMBER_OF_MINUTES_TO_IDLE_CONNECTIONS),
                     MaxConnectionsPerServer = MaximumConnectionsPerServer
                 };
 #else
@@ -82,7 +87,7 @@ namespace Nethereum.JsonRpc.Client
         }
 
         public RpcClient(Uri baseUrl, HttpClient httpClient, AuthenticationHeaderValue authHeaderValue = null,
-           JsonSerializerSettings jsonSerializerSettings = null, ILog log = null)
+           JsonSerializerSettings jsonSerializerSettings = null, ILogger log = null)
         {
             _baseUrl = baseUrl;
 
@@ -101,6 +106,47 @@ namespace Nethereum.JsonRpc.Client
             _rotateHttpClients = false;
         }
 
+
+        protected override async Task<RpcResponseMessage[]> SendAsync(RpcRequestMessage[] requests)
+        {
+            var logger = new RpcLogger(_log);
+            try
+            {
+                var httpClient = GetOrCreateHttpClient();
+                var rpcRequestJson = JsonConvert.SerializeObject(requests, _jsonSerializerSettings);
+                var httpContent = new StringContent(rpcRequestJson, Encoding.UTF8, "application/json");
+                var cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.CancelAfter(ConnectionTimeout);
+
+                logger.LogRequest(rpcRequestJson);
+
+                var httpResponseMessage = await httpClient.PostAsync(String.Empty, httpContent, cancellationTokenSource.Token).ConfigureAwait(false);
+                httpResponseMessage.EnsureSuccessStatusCode();
+
+                var stream = await httpResponseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                using (var streamReader = new StreamReader(stream))
+                using (var reader = new JsonTextReader(streamReader))
+                {
+                    var serializer = JsonSerializer.Create(_jsonSerializerSettings);
+                    var messages = serializer.Deserialize<RpcResponseMessage[]>(reader);
+
+                    return messages;
+                }
+            }
+            catch (TaskCanceledException ex)
+            {
+                var exception = new RpcClientTimeoutException($"Rpc timeout after {ConnectionTimeout.TotalMilliseconds} milliseconds", ex);
+                logger.LogException(exception);
+                throw exception;
+            }
+            catch (Exception ex)
+            {
+                var exception = new RpcClientUnknownException("Error occurred when trying to send multiple rpc requests(s)", ex);
+                logger.LogException(exception);
+                throw exception;
+            }
+        }
+
         protected override async Task<RpcResponseMessage> SendAsync(RpcRequestMessage request, string route = null)
         {
             var logger = new RpcLogger(_log);
@@ -117,7 +163,7 @@ namespace Nethereum.JsonRpc.Client
                 var httpResponseMessage = await httpClient.PostAsync(route, httpContent, cancellationTokenSource.Token).ConfigureAwait(false);
                 httpResponseMessage.EnsureSuccessStatusCode();
 
-                var stream = await httpResponseMessage.Content.ReadAsStreamAsync();
+                var stream = await httpResponseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 using (var streamReader = new StreamReader(stream))
                 using (var reader = new JsonTextReader(streamReader))
                 {
@@ -226,5 +272,7 @@ namespace Nethereum.JsonRpc.Client
             httpClient.DefaultRequestHeaders.Authorization = _authHeaderValue;
             httpClient.BaseAddress = _baseUrl;
         }
+
+    
     }
 }

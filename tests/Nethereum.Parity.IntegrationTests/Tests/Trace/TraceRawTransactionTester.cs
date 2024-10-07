@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
 using Nethereum.JsonRpc.Client;
+using Nethereum.Model;
 using Nethereum.Parity.RPC.Trace;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
@@ -25,25 +26,25 @@ namespace Nethereum.Parity.IntegrationTests.Tests.Trace
 
             var multiplier = 7;
 
-            var web3 = new Web3.Web3(new Account(privateKey), client);
+            var web3 = new Web3.Web3(new Web3.Accounts.Account(privateKey), client);
 
             var receipt = await
                 web3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync(abi, byteCode, senderAddress,
-                    new HexBigInteger(900000), null, multiplier);
+                    new HexBigInteger(900000), null, multiplier).ConfigureAwait(false);
 
             var contract = web3.Eth.GetContract(abi, receipt.ContractAddress);
 
             var function = contract.GetFunction("multiply");
             var transactionInput = function.CreateTransactionInput(senderAddress, null, null, 7);
             var signer = new LegacyTransactionSigner();
-            var nonce = await web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(senderAddress);
+            var nonce = await web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(senderAddress).ConfigureAwait(false);
             var signedTransaction = signer.SignTransaction(privateKey, transactionInput.To, 0, nonce.Value,
                 LegacyTransaction.DEFAULT_GAS_PRICE, 900000,
                 transactionInput.Data);
 
             var traceTransaction = new TraceRawTransaction(client);
             return await traceTransaction.SendRequestAsync(signedTransaction.EnsureHexPrefix(),
-                new[] {TraceType.vmTrace}, BlockParameter.CreateLatest());
+                new[] { TraceType.vmTrace }, BlockParameter.CreateLatest()).ConfigureAwait(false);
         }
 
         public override Type GetRequestType()
@@ -54,7 +55,7 @@ namespace Nethereum.Parity.IntegrationTests.Tests.Trace
         [Fact]
         public async void ShouldNotReturnNull()
         {
-            var result = await ExecuteAsync();
+            var result = await ExecuteAsync().ConfigureAwait(false);
             Assert.NotNull(result);
         }
     }

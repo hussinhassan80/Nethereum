@@ -11,6 +11,8 @@ using Nethereum.RPC.Eth;
 using Nethereum.RPC.Fee1559Suggestions;
 using Nethereum.RPC.TransactionReceipts;
 using Nethereum.RPC.TransactionTypes;
+using Nethereum.RPC.Chain;
+using Nethereum.Model;
 
 namespace Nethereum.RPC.TransactionManagers
 {
@@ -23,14 +25,20 @@ namespace Nethereum.RPC.TransactionManagers
         public bool UseLegacyAsDefault { get; set; } = false;
         public bool CalculateOrSetDefaultGasPriceFeesIfNotSet { get; set; } = true;
         public bool EstimateOrSetDefaultGasIfNotSet { get; set; } = true;
+        protected ChainFeature ChainFeature { get; set; }
+
+        public ITransactionVerificationAndRecovery TransactionVerificationAndRecovery { get; set; }
+
+        public BigInteger? ChainId { get; protected set; }
 
         public bool IsTransactionToBeSendAsEIP1559(TransactionInput transaction)
         {
-            return (!UseLegacyAsDefault && transaction.GasPrice == null) || (transaction.MaxPriorityFeePerGas != null) || (transaction.Type != null && transaction.Type.Value == TransactionType.EIP1559.AsByte());
+            if (ChainFeature != null && !ChainFeature.SupportEIP1559) return false;
+            return (!UseLegacyAsDefault && transaction.GasPrice == null) || (transaction.MaxPriorityFeePerGas != null) || (transaction.Type != null && transaction.Type.Value == TransactionTypes.TransactionType.EIP1559.AsByte());
         }
 
 #if !DOTNET35
-        public BigInteger DefaultMaxPriorityFeePerGas { get; set; } = SimpleFeeSuggestionStrategy.DEFAULT_MAX_PRIORITY_FEE_PER_GAS;
+        public BigInteger? DefaultMaxPriorityFeePerGas { get; set; } = null;
 
         private IFee1559SuggestionStrategy _fee1559SuggestionStrategy;
         public IFee1559SuggestionStrategy Fee1559SuggestionStrategy
@@ -38,7 +46,7 @@ namespace Nethereum.RPC.TransactionManagers
             get
             {
                 if (_fee1559SuggestionStrategy == null)
-                    _fee1559SuggestionStrategy = new SimpleFeeSuggestionStrategy(Client);
+                    _fee1559SuggestionStrategy = new TimePreferenceFeeSuggestionStrategy(Client);
                 return _fee1559SuggestionStrategy;
             }
             set => _fee1559SuggestionStrategy = value;
@@ -48,11 +56,14 @@ namespace Nethereum.RPC.TransactionManagers
 
         protected async Task SetTransactionFeesOrPricingAsync(TransactionInput transaction)
         {
+           
             if (CalculateOrSetDefaultGasPriceFeesIfNotSet)
             {
+                await EnsureChainIdAndChainFeatureIsSetAsync().ConfigureAwait(false);
+
                 if (IsTransactionToBeSendAsEIP1559(transaction))
                 {
-                    transaction.Type = new HexBigInteger(TransactionType.EIP1559.AsByte());
+                    transaction.Type = new HexBigInteger(TransactionTypes.TransactionType.EIP1559.AsByte());
                     if (transaction.MaxPriorityFeePerGas != null)
                     {
                         if (transaction.MaxFeePerGas == null)
@@ -98,6 +109,28 @@ namespace Nethereum.RPC.TransactionManagers
             }
         }
 
+        protected async Task EnsureChainIdAndChainFeatureIsSetAsync()
+        {
+            if(ChainId == null)
+            {
+                var ethGetChainId = new EthChainId(Client);
+                try
+                {
+                    ChainId = await ethGetChainId.SendRequestAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    ChainId = -1;
+                }
+                
+            }
+
+            if (ChainId != null)
+            {
+                ChainFeature = ChainFeaturesService.Current.GetChainFeature(ChainId.Value);
+            }
+        }
+
         public Task<string> SendRawTransactionAsync(string signedTransaction)
         {
             if (Client == null) throw new NullReferenceException("Client not configured");
@@ -119,9 +152,11 @@ namespace Nethereum.RPC.TransactionManagers
             }
         }
 
-        public Task<TransactionReceipt> SendTransactionAndWaitForReceiptAsync(TransactionInput transactionInput, CancellationTokenSource tokenSource)
+       
+
+        public Task<TransactionReceipt> SendTransactionAndWaitForReceiptAsync(TransactionInput transactionInput, CancellationToken cancellationToken = default)
         {
-            return TransactionReceiptService.SendRequestAndWaitForReceiptAsync(transactionInput, tokenSource);
+            return TransactionReceiptService.SendRequestAndWaitForReceiptAsync(transactionInput, cancellationToken);
         }
                
         public virtual Task<HexBigInteger> EstimateGasAsync(CallInput callInput)

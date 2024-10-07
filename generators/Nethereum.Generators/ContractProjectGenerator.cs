@@ -2,7 +2,9 @@
 using Nethereum.Generators.CQS;
 using Nethereum.Generators.DTOs;
 using Nethereum.Generators.Model;
+using Nethereum.Generators.MudService;
 using Nethereum.Generators.Service;
+using Nethereum.Generators.Unity;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,6 +12,7 @@ using System.Linq;
 
 namespace Nethereum.Generators
 {
+
     public class ContractProjectGenerator
     {
         public ContractABI ContractABI { get; }
@@ -24,6 +27,8 @@ namespace Nethereum.Generators
         public CodeGenLanguage CodeGenLanguage { get; }
 
         private string ProjectName { get; }
+
+        public string MudNamespace { get; set; }
 
         public ContractProjectGenerator(ContractABI contractABI,
             string contractName,
@@ -65,6 +70,7 @@ namespace Nethereum.Generators
             return generated.ToArray();
         }
 
+
         public GeneratedFile GenerateAllMessages()
         {
             var cqsFullNamespace = GetFullNamespace(CQSNamespace);
@@ -73,7 +79,7 @@ namespace Nethereum.Generators
             var generators = new List<IClassGenerator>();
             generators.Add(GetCQSMessageDeploymentGenerator());
             generators.AddRange(GetAllCQSFunctionMessageGenerators());
-            generators.AddRange(GetllEventDTOGenerators());
+            generators.AddRange(GetAllEventDTOGenerators());
             generators.AddRange(GetAllErrorDTOGenerators());
             generators.AddRange(GetAllFunctionDTOsGenerators());
             //using the same namespace..
@@ -106,11 +112,61 @@ namespace Nethereum.Generators
             return serviceGenerator.GenerateFileContent(serviceFullPath);
         }
 
+        public GeneratedFile GenerateMudService(string mudNamespace = null, bool singleMessagesFile = false)
+        {
+            var dtoFullNamespace = GetFullNamespace(DTONamespace);
+            var cqsFullNamespace = GetFullNamespace(CQSNamespace);
+
+            dtoFullNamespace = singleMessagesFile ? string.Empty : FullyQualifyNamespaceFromImport(dtoFullNamespace);
+            cqsFullNamespace = FullyQualifyNamespaceFromImport(cqsFullNamespace);
+
+            var serviceFullNamespace = GetFullNamespace(ServiceNamespace);
+            var serviceFullPath = GetFullPath(ServiceNamespace);
+            var serviceGenerator = new MudServiceGenerator(ContractABI, ContractName, ByteCode, serviceFullNamespace, cqsFullNamespace, dtoFullNamespace, CodeGenLanguage, mudNamespace);
+            return serviceGenerator.GenerateFileContent(serviceFullPath);
+        }
+
+        public GeneratedFile[] GenerateAllUnity()
+        {
+            var generated = new List<GeneratedFile>();
+            generated.Add(GenerateUnityFunctionRequests());
+            generated.Add(GenerateUnityContractFactory());
+            return generated.ToArray();
+        }
+
+        public GeneratedFile GenerateUnityContractFactory(bool singleMessagesFile = false)
+        {
+            var dtoFullNamespace = GetFullNamespace(DTONamespace);
+            var cqsFullNamespace = GetFullNamespace(CQSNamespace);
+
+            dtoFullNamespace = singleMessagesFile ? string.Empty : FullyQualifyNamespaceFromImport(dtoFullNamespace);
+            cqsFullNamespace = FullyQualifyNamespaceFromImport(cqsFullNamespace);
+
+            var serviceFullNamespace = GetFullNamespace(ServiceNamespace);
+            var serviceFullPath = GetFullPath(ServiceNamespace);
+            var unityRequestsGenerator = new UnityContractFactoryGenerator(ContractABI, ContractName, ByteCode, serviceFullNamespace, cqsFullNamespace, dtoFullNamespace, CodeGenLanguage);
+            return unityRequestsGenerator.GenerateFileContent(serviceFullPath);
+        }
+
+        public GeneratedFile GenerateUnityFunctionRequests(bool singleMessagesFile = false)
+        {
+            var dtoFullNamespace = GetFullNamespace(DTONamespace);
+            var cqsFullNamespace = GetFullNamespace(CQSNamespace);
+
+            dtoFullNamespace = singleMessagesFile ? string.Empty : FullyQualifyNamespaceFromImport(dtoFullNamespace);
+            cqsFullNamespace = FullyQualifyNamespaceFromImport(cqsFullNamespace);
+
+            var serviceFullNamespace = GetFullNamespace(ServiceNamespace);
+            var serviceFullPath = GetFullPath(ServiceNamespace);
+            var unityRequestsGenerator = new UnityRequestsGenerator(ContractABI, ContractName, ByteCode, serviceFullNamespace, cqsFullNamespace, dtoFullNamespace, CodeGenLanguage);
+            return unityRequestsGenerator.GenerateFileContent(serviceFullPath);
+        }
+
         public List<GeneratedFile> GenerateAllCQSMessages()
         {
             var generated = new List<GeneratedFile>();
-            generated.Add(GeneratCQSMessageDeployment());
-            generated.AddRange(GeneratCQSFunctionMessages());
+            generated.Add(GenerateCQSMessageDeployment());
+            generated.AddRange(GenerateCQSFunctionMessages());
             return generated;
         }
 
@@ -164,7 +220,7 @@ namespace Nethereum.Generators
 
         public List<GeneratedFile> GenerateAllEventDTOs()
         {
-            var generators = GetllEventDTOGenerators();
+            var generators = GetAllEventDTOGenerators();
             var dtoFullPath = GetFullPath(DTONamespace);
             var generated = new List<GeneratedFile>();
             foreach (var generator in generators)
@@ -186,7 +242,7 @@ namespace Nethereum.Generators
             return generated;
         }
 
-        public List<EventDTOGenerator> GetllEventDTOGenerators()
+        public List<EventDTOGenerator> GetAllEventDTOGenerators()
         {
             var dtoFullNamespace = GetFullNamespace(DTONamespace);
             var generators = new List<EventDTOGenerator>();
@@ -210,7 +266,7 @@ namespace Nethereum.Generators
             return generators;
         }
 
-        public List<GeneratedFile> GeneratCQSFunctionMessages()
+        public List<GeneratedFile> GenerateCQSFunctionMessages()
         {
             var generators = GetAllCQSFunctionMessageGenerators();
             var cqsFullPath = GetFullPath(CQSNamespace);;
@@ -233,7 +289,7 @@ namespace Nethereum.Generators
             var generators = new List<FunctionCQSMessageGenerator>();
             foreach (var functionAbi in ContractABI.Functions)
             {
-                var cqsGenerator = new FunctionCQSMessageGenerator(functionAbi, cqsFullNamespace, dtoFullNamespace, CodeGenLanguage);
+                var cqsGenerator = new FunctionCQSMessageGenerator(functionAbi, cqsFullNamespace, dtoFullNamespace, CodeGenLanguage, MudNamespace);
                 generators.Add(cqsGenerator);
             }
             return generators;
@@ -261,7 +317,7 @@ namespace Nethereum.Generators
                 CodeGenLanguage);
         }
 
-        public GeneratedFile GeneratCQSMessageDeployment()
+        public GeneratedFile GenerateCQSMessageDeployment()
         {
             var cqsGenerator = GetCQSMessageDeploymentGenerator();
 

@@ -22,7 +22,7 @@ namespace Nethereum.Util
         ///     If AlwaysTruncate is set to true all operations are affected.
         /// </summary>
         public const int Precision = 50;
-
+        public const decimal PI = 3.14159265358979323846264338327950288419716939937510M;
         public BigDecimal(BigDecimal bigDecimal, bool alwaysTruncate = false) : this(bigDecimal.Mantissa,
             bigDecimal.Exponent, alwaysTruncate)
         {
@@ -110,6 +110,8 @@ namespace Nethereum.Util
         /// <returns>The truncated number</returns>
         internal BigDecimal Truncate(int precision = Precision)
         {
+            //if the precission is 0, 
+            if(precision <= 0) throw new ArgumentException("Precision has to bigger than 0");
             // copy this instance (remember its a struct)
             var shortened = this;
             // save some time because the number of digits is not needed to remove trailing zeros
@@ -155,7 +157,10 @@ namespace Nethereum.Util
         /// <returns>The truncated number</returns>
         public BigDecimal Floor()
         {
-            return Truncate(Mantissa.NumberOfDigits() + Exponent);
+            var precission = Mantissa.NumberOfDigits() + Exponent;
+            if (precission <= 0) return 0;
+
+            return Truncate(precission);
         }
 
         private static int NumberOfDigits(BigInteger value)
@@ -222,17 +227,8 @@ namespace Nethereum.Util
 
         public static implicit operator BigDecimal(double value)
         {
-            var mantissa = (long)value;
-            var exponent = 0;
-            double scaleFactor = 1;
-            while (Math.Abs(value * scaleFactor - (double) mantissa) > 0)
-            {
-                exponent -= 1;
-                scaleFactor *= 10;
-                mantissa = (long)(value * scaleFactor);
-            }
+            return new BigDecimal(Convert.ToDecimal(value));         
 
-            return new BigDecimal(mantissa, exponent);
         }
 
         public static implicit operator BigDecimal(decimal value)
@@ -408,6 +404,29 @@ namespace Nethereum.Util
             return tmp * Math.Exp(exponent);
         }
 
+        public static BigDecimal Pow(BigDecimal value, int exponent)
+        {
+            if (exponent < 0)
+                throw new ArgumentOutOfRangeException("exponent", "exp must be >= 0");
+            if (exponent == 0)
+                return new BigDecimal(1) ;
+            if (exponent == 1)
+                return value;
+
+            BigDecimal result = new BigDecimal(1);
+            while (exponent != 0)
+            {
+                if ((exponent & 1) != 0)
+                    result = result * value;
+                if (exponent == 1)
+                    break;
+
+                value = value * value;
+                exponent >>= 1;
+            }
+            return result;
+        }
+
         public static BigDecimal Pow(double basis, double exponent)
         {
             var tmp = (BigDecimal) 1;
@@ -417,7 +436,7 @@ namespace Nethereum.Util
                 tmp *= Math.Pow(basis, diff);
                 exponent -= diff;
             }
-
+            
             return tmp * Math.Pow(basis, exponent);
         }
 

@@ -2,7 +2,9 @@
 using System.Diagnostics;
 using System.Threading;
 using Nethereum.Hex.HexConvertors.Extensions;
+using Nethereum.Model;
 using Nethereum.RPC.Eth.DTOs;
+using Nethereum.RPC.Eth.Mappers;
 using Nethereum.RPC.Fee1559Suggestions;
 using Nethereum.RPC.TransactionReceipts;
 using Nethereum.RPC.Web3;
@@ -37,7 +39,7 @@ namespace Nethereum.Signer.IntegrationTests
                 var version = await new Web3ClientVersion(web3.Client).SendRequestAsync().ConfigureAwait(false);
 
                 var x = new TimePreferenceFeeSuggestionStrategy(web3.Client);
-                var fees = await x.SuggestFeesAsync();
+                var fees = await x.SuggestFeesAsync().ConfigureAwait(false);
 
                 //var block =
                 //    await web3.Eth.FeeHistory.SendRequestAsync(7, new BlockParameter(10), new []{10,20, 30}
@@ -68,25 +70,28 @@ namespace Nethereum.Signer.IntegrationTests
                 ));
 
                 var web3 = _ethereumClientIntegrationFixture.GetWeb3();
-                var nonce = await web3.Eth.TransactionManager.Account.NonceService.GetNextNonceAsync();
+                var nonce = await web3.Eth.TransactionManager.Account.NonceService.GetNextNonceAsync().ConfigureAwait(false);
                 var lastBlock =
                     await web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
+                        BlockParameter.CreateLatest()).ConfigureAwait(false);
                 var baseFee = lastBlock.BaseFeePerGas;
                 var maxPriorityFeePerGas = 2000000000;
                 var maxFeePerGas = baseFee.Value * 2 + 2000000000;
 
                 var transaction1559 = new Transaction1559(chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, 45000,
                     "0x1ad91ee08f21be3de0ba2ba6918e714da6b45836", 10, "", accessLists);
-                transaction1559.Sign(new EthECKey(EthereumClientIntegrationFixture.AccountPrivateKey));
-
-
+               
+                var signer = new Transaction1559Signer();
+                signer.SignTransaction(new EthECKey(EthereumClientIntegrationFixture.AccountPrivateKey), transaction1559);
+                //02f8e385677af40754
+                //02f8de80
                 var txnHash =
                     await web3.Eth.Transactions.SendRawTransaction.SendRequestAsync(transaction1559.GetRLPEncoded()
-                        .ToHex());
+                        .ToHex()).ConfigureAwait(false);
+                await web3.TransactionReceiptPolling.PollForReceiptAsync(txnHash);
                 // create recover signature
-                var txn = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(txnHash);
-
+                var txn = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(txnHash).ConfigureAwait(false);
+                Assert.True(txn.ToSignedTransaction(chainId).SignedTransaction.GetRLPEncodedRaw().ToHex().IsTheSameHex(transaction1559.GetRLPEncodedRaw().ToHex()));
                 Assert.True(txn.To.IsTheSameAddress("0x1ad91ee08f21be3de0ba2ba6918e714da6b45836"));
                 Assert.Equal(10, txn.Value.Value);
 
@@ -98,10 +103,10 @@ namespace Nethereum.Signer.IntegrationTests
             {
                 var chainId = 444444444500;
                 var web3 = _ethereumClientIntegrationFixture.GetWeb3();
-                var nonce = await web3.Eth.TransactionManager.Account.NonceService.GetNextNonceAsync();
+                var nonce = await web3.Eth.TransactionManager.Account.NonceService.GetNextNonceAsync().ConfigureAwait(false);
                 var lastBlock =
                     await web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
+                        BlockParameter.CreateLatest()).ConfigureAwait(false);
                 var baseFee = lastBlock.BaseFeePerGas;
                 var maxPriorityFeePerGas = 2000000000;
                 var maxFeePerGas = baseFee.Value * 2 + 2000000000;
@@ -109,14 +114,15 @@ namespace Nethereum.Signer.IntegrationTests
                 var transaction1559 = new Transaction1559(chainId, nonce.Value, maxPriorityFeePerGas, maxFeePerGas,
                     45000,
                     "0x1ad91ee08f21be3de0ba2ba6918e714da6b45836", 10, "", null);
-                transaction1559.Sign(new EthECKey(EthereumClientIntegrationFixture.AccountPrivateKey));
+                var signer = new Transaction1559Signer();
+                signer.SignTransaction(new EthECKey(EthereumClientIntegrationFixture.AccountPrivateKey), transaction1559);
 
 
                 var txnHash =
                     await web3.Eth.Transactions.SendRawTransaction.SendRequestAsync(transaction1559.GetRLPEncoded()
-                        .ToHex());
+                        .ToHex()).ConfigureAwait(false);
                 // create recover signature
-                var txn = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(txnHash);
+                var txn = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(txnHash).ConfigureAwait(false);
                 //what I want is to get the right Transaction checking the type or chainid etc and do a recovery
                 Assert.True(txn.To.IsTheSameAddress("0x1ad91ee08f21be3de0ba2ba6918e714da6b45836"));
                 Assert.Equal(10, txn.Value.Value);
@@ -130,7 +136,7 @@ namespace Nethereum.Signer.IntegrationTests
 
                 var transactionReceipt =
                     await new TransactionReceiptPollingService(web3.TransactionManager).PollForReceiptAsync(txnHash,
-                        new CancellationTokenSource());
+                        new CancellationTokenSource().Token).ConfigureAwait(false);
 
             }
 

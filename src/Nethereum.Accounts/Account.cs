@@ -1,7 +1,9 @@
 ﻿using System.Numerics;
+using Nethereum.Accounts.AccountMessageSigning;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.KeyStore;
 using Nethereum.RPC.Accounts;
+using Nethereum.RPC.AccountSigning;
 using Nethereum.RPC.NonceServices;
 using Nethereum.RPC.TransactionManagers;
 using Nethereum.Signer;
@@ -14,11 +16,11 @@ namespace Nethereum.Web3.Accounts
         public BigInteger? ChainId { get; }
 
 #if !PCL
-        public static Account LoadFromKeyStoreFile(string filePath, string password)
+        public static Account LoadFromKeyStoreFile(string filePath, string password, BigInteger? chainId = null)
         {
             var keyStoreService = new Nethereum.KeyStore.KeyStoreService();
             var key = keyStoreService.DecryptKeyStoreFromFile(password, filePath);
-            return new Account(key);
+            return new Account(key, chainId);
         }
 #endif
         public static Account LoadFromKeyStore(string json, string password, BigInteger? chainId = null)
@@ -67,6 +69,7 @@ namespace Nethereum.Web3.Accounts
             PrivateKey = key.GetPrivateKey();
             Address = key.GetPublicAddress();
             PublicKey = key.GetPubKey().ToHex();
+            AccountSigningService = new AccountSigningOfflineService(key);
             InitialiseDefaultTransactionManager();
         }
 
@@ -83,5 +86,6 @@ namespace Nethereum.Web3.Accounts
             get => _nonceService ?? (_nonceService = new InMemoryNonceService(Address, TransactionManager.Client));
             set => _nonceService = value;
         }
+        public IAccountSigningService AccountSigningService { get; private set; }
     }
 }

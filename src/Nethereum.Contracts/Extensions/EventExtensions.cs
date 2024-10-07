@@ -13,6 +13,8 @@ using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Nethereum.ABI.ABIRepository;
+using System.Numerics;
 
 namespace Nethereum.Contracts
 {
@@ -409,6 +411,12 @@ namespace Nethereum.Contracts
             return DecodeAllEvents<TEventDTO>(eventABI, logs);
         }
 
+        public static List<EventLog<TEventDTO>> DecodeAllEvents<TEventDTO>(this List<FilterLog> logs) where TEventDTO : new()
+        {
+            var eventABI = ABITypedRegistry.GetEvent<TEventDTO>();
+            return DecodeAllEvents<TEventDTO>(eventABI, logs.ToArray());
+        }
+
         public static List<EventLog<TEventDTO>> DecodeAllEvents<TEventDTO>(this TransactionReceipt transactionReceipt) where TEventDTO : new()
         {
             return transactionReceipt.Logs.DecodeAllEvents<TEventDTO>();
@@ -467,6 +475,16 @@ namespace Nethereum.Contracts
         public static EventLog<List<ParameterOutput>> DecodeEventDefaultTopics(this EventABI eventABI, JToken log)
         {
             return DecodeEventDefaultTopics(eventABI, JsonConvert.DeserializeObject<FilterLog>(log.ToString()));
+        }
+
+        public static JObject DecodeEventToJObject(this EventABI eventABI, JToken log)
+        {
+            return DecodeEventDefaultTopics(eventABI, JsonConvert.DeserializeObject<FilterLog>(log.ToString())).Event.ConvertToJObject();
+        }
+
+        public static JObject DecodeEventToJObject(this EventABI eventABI, FilterLog log)
+        {
+            return DecodeEventDefaultTopics(eventABI, log).Event.ConvertToJObject();
         }
 
         public static EventLog<TEventDTO> DecodeEvent<TEventDTO>(this EventABI eventABI, FilterLog log) where TEventDTO : new()
@@ -551,11 +569,76 @@ namespace Nethereum.Contracts
             return list.ToArray();
         }
 
+        public static FilterLog[] SortLogs(this IEnumerable<FilterLog> logs)
+        {
+            return logs.Sort();
+        }
+
         public static EventLog<TEventDTO>[] Sort<TEventDTO>(this IEnumerable<EventLog<TEventDTO>> events) where TEventDTO : IEventDTO
         {
             var list = events.ToList();
             list.Sort(new EventLogBlockNumberTransactionIndexComparer<EventLog<TEventDTO>>());
             return list.ToArray();
+        }
+
+        public static EventLog<TEventDTO>[] SortLogs<TEventDTO>(this IEnumerable<EventLog<TEventDTO>> events) where TEventDTO : IEventDTO
+        {
+            return events.Sort<TEventDTO>();
+        }
+
+
+        public static EventABI FindEventABIFromLogAndContractAddress(this
+          IABIInfoStorage abiInfoStorage, FilterLog filterLog, BigInteger chainId)
+        {
+            return abiInfoStorage.FindEventABI(chainId, filterLog.Address, filterLog.EventSignature());
+        }
+
+        public static EventABI FindEventABIFromLogAndContractAddress(this
+         IABIInfoStorage abiInfoStorage, JToken log, BigInteger chainId)
+        {
+            var filterLog = JsonConvert.DeserializeObject<FilterLog>(log.ToString());
+            return abiInfoStorage.FindEventABI(chainId, filterLog.Address, filterLog.EventSignature());
+        }
+
+        public static EventABI FindEventABIFromLogAndContractAddress(this
+        FilterLog filterLog, IABIInfoStorage abiInfoStorage, BigInteger chainId)
+        {
+            return abiInfoStorage.FindEventABIFromLogAndContractAddress(filterLog, chainId);
+        }
+
+        public static EventABI FindEventABIFromLogAndContractAddress(this
+                        JToken log, IABIInfoStorage abiInfoStorage, BigInteger chainId)
+        {
+            return abiInfoStorage.FindEventABIFromLogAndContractAddress(log, chainId);
+        }
+
+        public static List<EventABI> FindEventABIFromLog(this
+          IABIInfoStorage abiInfoStorage, FilterLog log)
+        {
+            var events = abiInfoStorage.FindEventABI(log.EventSignature());
+            return events.Where(x => x.IsLogForEvent(log)).ToList();
+        }
+
+        public static List<EventABI> FindEventABIFromLog(this
+          IABIInfoStorage abiInfoStorage, JToken log)
+        {
+            var filterLog = JsonConvert.DeserializeObject<FilterLog>(log.ToString());
+            return abiInfoStorage.FindEventABIFromLog(filterLog);
+        }
+
+        public static List<EventABI> FindEventABIFromLog(this FilterLog log,
+          IABIInfoStorage abiInfoStorage)
+        {
+
+            var events = abiInfoStorage.FindEventABI(log.EventSignature());
+            return events.Where(x => x.IsLogForEvent(log)).ToList();
+        }
+
+        public static List<EventABI> FindEventABIFromLog(this JToken log,
+          IABIInfoStorage abiInfoStorage )
+        {
+            var filterLog = JsonConvert.DeserializeObject<FilterLog>(log.ToString());
+            return abiInfoStorage.FindEventABIFromLog(filterLog);
         }
 
         public static string EventSignature(this FilterLog log) => log.GetTopic(0);

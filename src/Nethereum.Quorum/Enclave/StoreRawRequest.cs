@@ -1,12 +1,14 @@
 ﻿using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace Nethereum.Quorum.Enclave
 {
+
     public class StoreRawRequest
     {
-        [DataMember(Name =  "payload")]
+        [JsonProperty(PropertyName =  "payload")]
         public string Payload { get; set; }
-        [DataMember(Name =  "from")]
+        [JsonProperty(PropertyName =  "from")]
         public string From { get; set; }
     }
 }

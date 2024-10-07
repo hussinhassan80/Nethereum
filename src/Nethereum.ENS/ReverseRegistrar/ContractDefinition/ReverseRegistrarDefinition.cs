@@ -15,7 +15,7 @@ namespace Nethereum.ENS.ReverseRegistrar.ContractDefinition
 
     public partial class ReverseRegistrarDeployment : ReverseRegistrarDeploymentBase
     {
-        public ReverseRegistrarDeployment() : base(BYTECODE) { }
+        public ReverseRegistrarDeployment() : base(ReverseRegistrarDeploymentBase.BYTECODE) { }
         public ReverseRegistrarDeployment(string byteCode) : base(byteCode) { }
     }
 

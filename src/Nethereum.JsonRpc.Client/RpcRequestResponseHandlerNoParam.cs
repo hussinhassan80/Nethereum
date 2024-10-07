@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Nethereum.JsonRpc.Client.RpcMessages;
+using System;
 using System.Threading.Tasks;
 
 namespace Nethereum.JsonRpc.Client
 {
-    public class RpcRequestResponseHandlerNoParam<TResponse> : IRpcRequestHandler
+    public class RpcRequestResponseHandlerNoParam<TResponse> : IRpcRequestHandler<TResponse>
     {
         protected RpcRequestBuilder RpcRequestBuilder { get; }
 
@@ -22,9 +23,26 @@ namespace Nethereum.JsonRpc.Client
             return Client.SendRequestAsync<TResponse>(BuildRequest(id));
         }
 
+        public RpcRequestResponseBatchItem<RpcRequestResponseHandlerNoParam<TResponse>, TResponse> CreateBatchItem(object id)
+        {
+            return new RpcRequestResponseBatchItem<RpcRequestResponseHandlerNoParam<TResponse>, TResponse>(this, BuildRequest(id));
+        }
+
         public RpcRequest BuildRequest(object id = null)
         {
             return RpcRequestBuilder.BuildRequest(id);
+        }
+
+        public virtual TResponse DecodeResponse(RpcResponseMessage rpcResponseMessage)
+        {
+            try
+            {
+                return rpcResponseMessage.GetResult<TResponse>();
+            }
+            catch (FormatException formatException)
+            {
+                throw new RpcResponseFormatException("Invalid format found in RPC response", formatException);
+            }
         }
     }
 

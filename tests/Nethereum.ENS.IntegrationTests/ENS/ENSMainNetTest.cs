@@ -1,6 +1,7 @@
 using System.Linq;
 using Multiformats.Codec;
 using Multiformats.Hash;
+using Nethereum.Contracts.Standards.ENS;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Util;
 using Nethereum.XUnitEthereumClients;
@@ -29,29 +30,29 @@ namespace Nethereum.ENS.IntegrationTests.ENS
 
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
             var ethTLSService = new EthTLSService(web3);
-            await ethTLSService.InitialiseAsync();
+            await ethTLSService.InitialiseAsync().ConfigureAwait(false);
 
-            var price = await ethTLSService.CalculateRentPriceInEtherAsync(ourName, durationInDays);
+            var price = await ethTLSService.CalculateRentPriceInEtherAsync(ourName, durationInDays).ConfigureAwait(false);
             Assert.True(price > 0);
 
-            var commitment = await ethTLSService.CalculateCommitmentAsync(ourName, owner, secret);
-            var commitTransactionReceipt = await ethTLSService.CommitRequestAndWaitForReceiptAsync(commitment);
-            var txnHash = await ethTLSService.RegisterRequestAsync(ourName, owner, durationInDays, secret, price);
+            var commitment = await ethTLSService.CalculateCommitmentAsync(ourName, owner, secret).ConfigureAwait(false);
+            var commitTransactionReceipt = await ethTLSService.CommitRequestAndWaitForReceiptAsync(commitment).ConfigureAwait(false);
+            var txnHash = await ethTLSService.RegisterRequestAsync(ourName, owner, durationInDays, secret, price).ConfigureAwait(false);
         }
 
         public async void ShouldBeAbleToSetTextExample()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var txn = await ensService.SetTextRequestAsync("nethereum.eth", TextDataKey.url, "https://nethereum.com");
+            var ensService = new ENSService(web3.Eth);
+            var txn = await ensService.SetTextRequestAsync("nethereum.eth", (Contracts.Standards.ENS.TextDataKey)TextDataKey.url, "https://nethereum.com").ConfigureAwait(false);
         }
 
         [Fact]
         public async void ShouldBeAbleToResolveText()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var url = await ensService.ResolveTextAsync("nethereum.eth", TextDataKey.url);
+            var ensService = new ENSService(web3.Eth);
+            var url = await ensService.ResolveTextAsync("nethereum.eth", (Contracts.Standards.ENS.TextDataKey)TextDataKey.url).ConfigureAwait(false);
             Assert.Equal("https://nethereum.com", url);
         }
 
@@ -67,12 +68,12 @@ namespace Nethereum.ENS.IntegrationTests.ENS
 
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
             var ethTLSService = new EthTLSService(web3);
-            await ethTLSService.InitialiseAsync();
+            await ethTLSService.InitialiseAsync().ConfigureAwait(false);
 
-            var price = await ethTLSService.CalculateRentPriceInEtherAsync(ourName, durationInDays);
+            var price = await ethTLSService.CalculateRentPriceInEtherAsync(ourName, durationInDays).ConfigureAwait(false);
             Assert.True(price > 0);
 
-            var commitment = await ethTLSService.CalculateCommitmentAsync(ourName, owner, secret);
+            var commitment = await ethTLSService.CalculateCommitmentAsync(ourName, owner, secret).ConfigureAwait(false);
             Assert.Equal("0x546d078db03381f4a33a33600cf1b91e00815b572c944f4a19624c8d9aaa9c14", commitment.ToHex(true));
         }
 
@@ -82,7 +83,7 @@ namespace Nethereum.ENS.IntegrationTests.ENS
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
             var ethTLSService = new EthTLSService(web3);
-            await ethTLSService.InitialiseAsync();
+            await ethTLSService.InitialiseAsync().ConfigureAwait(false);
             var controllerAddress = ethTLSService.TLSControllerAddress;
             Assert.True("0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5".IsTheSameAddress(controllerAddress));
             
@@ -92,8 +93,8 @@ namespace Nethereum.ENS.IntegrationTests.ENS
         public async void ShouldResolveAddressFromMainnet()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var theAddress = await ensService.ResolveAddressAsync("nick.eth");     
+            var ensService = new ENSService(web3.Eth);
+            var theAddress = await ensService.ResolveAddressAsync("nick.eth").ConfigureAwait(false);     
             var expectedAddress = "0xb8c2C29ee19D8307cb7255e1Cd9CbDE883A267d5";
             Assert.True(expectedAddress.IsTheSameAddress(theAddress));   
         }
@@ -103,8 +104,8 @@ namespace Nethereum.ENS.IntegrationTests.ENS
         public async void ShouldRetrieveTheContentHashAndDecodeIt()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var content = await ensService.GetContentHashAsync("3-7-0-0.web3.nethereum.dotnet.netdapps.eth");
+            var ensService = new ENSService(web3.Eth);
+            var content = await ensService.GetContentHashAsync("3-7-0-0.web3.nethereum.dotnet.netdapps.eth").ConfigureAwait(false);
             var storage = content[0];
             //This depends on IPLD.ContentIdentifier, Multiformats Hash and Codec
             if (storage == 0xe3) // if storage is IPFS 
@@ -125,8 +126,8 @@ namespace Nethereum.ENS.IntegrationTests.ENS
             var ipfsStoragePrefix = new byte[] { 0xe3, 0x01 };
             var fullContentHash = ipfsStoragePrefix.Concat(cid.ToBytes()).ToArray();
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var content = await ensService.GetContentHashAsync("3-7-0-0.web3.nethereum.dotnet.netdapps.eth");
+            var ensService = new ENSService(web3.Eth);
+            var content = await ensService.GetContentHashAsync("3-7-0-0.web3.nethereum.dotnet.netdapps.eth").ConfigureAwait(false);
             //e301017012202febb4a7c84c8079f78844e50150d97ad33e2a3a0d680d54e7211e30ef13f08d
             Assert.Equal(content.ToHex(), fullContentHash.ToHex());
         }
@@ -135,16 +136,16 @@ namespace Nethereum.ENS.IntegrationTests.ENS
         public async void ShouldSetSubnodeExample()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var txn = await ensService.SetSubnodeOwnerRequestAsync("yoursupername.eth", "subdomainName", "addressOwner");
+            var ensService = new ENSService(web3.Eth);
+            var txn = await ensService.SetSubnodeOwnerRequestAsync("yoursupername.eth", "subdomainName", "addressOwner").ConfigureAwait(false);
         }
 
         //[Fact]
         public async void ShouldReverseResolveAddressFromMainnet()
         {
             var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Mainnet);
-            var ensService = new ENSService(web3);
-            var name = await ensService.ReverseResolveAsync("0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb");
+            var ensService = new ENSService(web3.Eth);
+            var name = await ensService.ReverseResolveAsync("0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb").ConfigureAwait(false);
             var expectedName = "alex.vandesande.eth";
             Assert.Equal(expectedName, name);
         }

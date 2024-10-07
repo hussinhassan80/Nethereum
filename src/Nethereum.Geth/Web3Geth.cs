@@ -1,5 +1,7 @@
 ﻿using System.Net.Http.Headers;
-using Common.Logging;
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP3_1_OR_GREATER || NET461_OR_GREATER || NET5_0_OR_GREATER
+using Microsoft.Extensions.Logging;
+#endif
 using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Accounts;
 
@@ -11,7 +13,7 @@ namespace Nethereum.Geth
         {
         }
 
-        public Web3Geth(string url = @"http://localhost:8545/", ILog log = null, AuthenticationHeaderValue authenticationHeader = null) : base(url, log, authenticationHeader)
+        public Web3Geth(string url = @"http://localhost:8545/", ILogger log = null, AuthenticationHeaderValue authenticationHeader = null) : base(url, log, authenticationHeader)
         {
         }
 
@@ -19,13 +21,13 @@ namespace Nethereum.Geth
         {
         }
 
-        public Web3Geth(IAccount account, string url = @"http://localhost:8545/", ILog log = null, AuthenticationHeaderValue authenticationHeader = null) : base(account, url, log, authenticationHeader)
+        public Web3Geth(IAccount account, string url = @"http://localhost:8545/", ILogger log = null, AuthenticationHeaderValue authenticationHeader = null) : base(account, url, log, authenticationHeader)
         {
         }
 
         public IAdminApiService Admin { get; private set; }
 
-        public IDebugApiService Debug { get; private set; }
+        public IDebugApiService GethDebug { get; private set; }
 
         public IMinerApiService Miner { get; private set; }
 
@@ -37,7 +39,7 @@ namespace Nethereum.Geth
         {
             base.InitialiseInnerServices();
             Miner = new MinerApiService(Client);
-            Debug = new DebugApiService(Client);
+            GethDebug = new DebugApiService(Client);
             Admin = new AdminApiService(Client);
             GethEth = new GethEthApiService(Client);
             TxnPool = new TxnPoolApiService(Client);

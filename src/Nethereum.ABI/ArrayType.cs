@@ -11,9 +11,13 @@ namespace Nethereum.ABI
             InitialiseElementType(name);
         }
 
+        public abstract object DecodePackedUsingElementPacked(byte[] encoded, Type type);
+        public abstract byte[] EncodePackedUsingElementPacked(object value);
+        
+
         public new static ArrayType CreateABIType(string typeName)
         {
-            var indexFirstBracket = typeName.IndexOf("[", StringComparison.Ordinal);
+            var indexFirstBracket = typeName.LastIndexOf("[", StringComparison.Ordinal);
             var indexSecondBracket = typeName.IndexOf("]", indexFirstBracket, StringComparison.Ordinal);
 
             if (indexFirstBracket + 1 == indexSecondBracket)
@@ -23,12 +27,12 @@ namespace Nethereum.ABI
 
         private void InitialiseElementType(string name)
         {
-            var indexFirstBracket = name.IndexOf("[", StringComparison.Ordinal);
-            var elementTypeName = name.Substring(0, indexFirstBracket);
-            var indexSecondBracket = name.IndexOf("]", indexFirstBracket, StringComparison.Ordinal);
+            var indexLastBracket = name.LastIndexOf("[", StringComparison.Ordinal);
+            var elementTypeName = name.Substring(0, indexLastBracket);
+            //var indexSecondBracket = name.IndexOf("]", indexFirstBracket, StringComparison.Ordinal);
 
-            var subDim = indexSecondBracket + 1 == name.Length ? "" : name.Substring(indexSecondBracket + 1);
-            ElementType = ABIType.CreateABIType(elementTypeName + subDim);
+            //var subDim = indexSecondBracket + 1 == name.Length ? "" : name.Substring(indexSecondBracket + 1);
+            ElementType = ABIType.CreateABIType(elementTypeName);
         }
     }
 }

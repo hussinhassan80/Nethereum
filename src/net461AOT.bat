@@ -3,6 +3,7 @@ del /S compiledlibraries\net461dllsAOT\*.dll
 SET releaseSuffix=
 SET targetNet35=false
 
+
 cd Nethereum.Hex
 CALL :build
 cd ..
@@ -20,10 +21,6 @@ CALL :build
 cd ..
 
 cd Nethereum.Web3
-CALL :build
-cd ..
-
-cd Nethereum.StandardToken*
 CALL :build
 cd ..
 
@@ -79,7 +76,11 @@ cd Nethereum.Accounts*
 CALL :build
 cd ..
 
-cd Nethereum.Unity*
+cd Nethereum.Unity
+CALL :build
+cd ..
+
+cd Nethereum.Unity.Metamask
 CALL :build
 cd ..
 
@@ -106,6 +107,27 @@ cd ..
 cd Nethereum.BlockchainProcessing
 CALL :build
 cd..
+
+cd Nethereum.Optimism
+CALL :build
+cd ..
+
+cd Nethereum.EVM
+CALL :build
+cd ..
+
+cd Nethereum.Merkle
+CALL :build
+cd ..
+
+cd Nethereum.Merkle.Patricia
+CALL :build
+cd ..
+
+cd Nethereum.Model
+CALL :build
+cd ..
+
 
 EXIT /B %ERRORLEVEL%
 

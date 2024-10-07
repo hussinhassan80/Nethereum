@@ -23,10 +23,6 @@ cd Nethereum.Web3
 CALL :build
 cd ..
 
-cd Nethereum.StandardToken*
-CALL :build
-cd ..
-
 cd Nethereum.JsonRpc.IpcClient*
 CALL :build
 cd ..
@@ -79,7 +75,11 @@ cd Nethereum.Accounts*
 CALL :build
 cd ..
 
-cd Nethereum.Unity*
+cd Nethereum.Unity
+CALL :build
+cd ..
+
+cd Nethereum.Unity.Metamask
 CALL :build
 cd ..
 
@@ -107,6 +107,47 @@ cd Nethereum.BlockchainProcessing
 CALL :build
 cd..
 
+cd Nethereum.Optimism
+CALL :build
+cd ..
+
+cd Nethereum.UI
+CALL :build
+cd ..
+
+cd Nethereum.EVM
+CALL :build
+cd ..
+
+cd Nethereum.Merkle
+CALL :build
+cd ..
+
+cd Nethereum.Merkle.Patricia
+CALL :build
+cd ..
+
+cd Nethereum.Metamask
+CALL :build
+cd ..
+
+cd Nethereum.Model
+CALL :build
+cd ..
+
+cd Nethereum.Mud
+CALL :build
+cd ..
+
+cd Nethereum.Mud.Contracts
+CALL :build
+cd ..
+
+cd Nethereum.Util.RestApi
+CALL :build
+cd ..
+
+
 EXIT /B %ERRORLEVEL%
 
 :build
@@ -114,4 +155,5 @@ rem dotnet clean /property:ReleaseSuffix=%releaseSuffix% /property:TargetNet472=
 rem  dotnet restore /property:ReleaseSuffix=%releaseSuffix% /property:TargetNet472=true /property:TargetNet35=false /property:TargetUnityNet472AOT=true
 dotnet build  -c Release /property:ReleaseSuffix=%releaseSuffix% /property:TargetNet472=true /property:TargetNet35=false /property:TargetUnityNet472AOT=true
 xcopy bin\Release\net472\*.dll "..\compiledlibraries\net472dllsAOT" /s /y
+xcopy bin\Release\net472\*.jslib "..\compiledlibraries\net472dllsAOT" /s /y
 EXIT /B 0

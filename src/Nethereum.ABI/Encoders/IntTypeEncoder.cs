@@ -59,9 +59,62 @@ namespace Nethereum.ABI.Encoders
             return EncodeInt(new BigInteger(value));
         }
 
-        public byte[] EncodeInt(BigInteger value, uint numberOfBytesArray)
+        public static byte[] EncodeSignedUnsigned256(BigInteger value, uint numberOfBytesArray)
         {
-            ValidateValue(value);
+            if (value <= (IntType.MAX_UINT256_VALUE*-1))
+            {
+                value = 1 + IntType.MAX_UINT256_VALUE + (value);
+            }
+
+            //It should always be Big Endian.
+            var bytes = BitConverter.IsLittleEndian
+                ? value.ToByteArray().Reverse().ToArray()
+                : value.ToByteArray();
+
+
+            if (bytes.Length == 33 && value.Sign > 0)
+            {
+                if (bytes[0] == 0x00)
+                {
+                    bytes = bytes.Skip(1).ToArray();
+                }
+            }
+            else
+            {
+                if(bytes.Length > 32 && value < 0)
+                {
+                    value = 1 + IntType.MAX_UINT256_VALUE + (value);
+                    return EncodeSignedUnsigned256(value, numberOfBytesArray);
+                }
+                else
+                {
+                    if(bytes.Length > 32)
+                    {
+                        throw new OverflowException();
+                    }
+                }
+            }
+
+            var ret = new byte[numberOfBytesArray];
+
+            for (var i = 0; i < ret.Length; i++)
+                if (value.Sign < 0)
+                    ret[i] = 0xFF;
+                else
+                    ret[i] = 0;
+
+            Array.Copy(bytes, 0, ret, (int)numberOfBytesArray - bytes.Length, bytes.Length);
+
+            return ret;
+        }
+
+
+        public byte[] EncodeInt(BigInteger value, uint numberOfBytesArray, bool validate = true, bool overflowToDefault = false)
+        {
+            if (validate)
+            {
+                ValidateValue(value);
+            }
             //It should always be Big Endian.
             var bytes = BitConverter.IsLittleEndian
                 ? value.ToByteArray().Reverse().ToArray()
@@ -75,8 +128,23 @@ namespace Nethereum.ABI.Encoders
                 }
                 else
                 {
-                    throw new ArgumentOutOfRangeException(nameof(value),
-                        $"Unsigned SmartContract integer must not exceed maximum value for uint256: {IntType.MAX_UINT256_VALUE.ToString()}. Current value is: {value}");
+                    if (overflowToDefault)
+                    {
+                        var defaultValue  = new byte[numberOfBytesArray];
+
+                        for (var i = 0; i < defaultValue.Length; i++)
+                            if (value.Sign < 0)
+                                defaultValue[i] = 0xFF;
+                            else
+                                defaultValue[i] = 0;
+
+                        return defaultValue;
+                    }
+                    else
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(value),
+                            $"Unsigned SmartContract integer must not exceed maximum value for uint256: {IntType.MAX_UINT256_VALUE.ToString()}. Current value is: {value}");
+                    }
                 }
             }
 
@@ -88,7 +156,13 @@ namespace Nethereum.ABI.Encoders
                 else
                     ret[i] = 0;
 
+            if (((int)numberOfBytesArray == bytes.Length -1) && !_signed && bytes.Length > 0 && bytes[0] == 0)
+            {
+                bytes = bytes.Skip(1).ToArray();
+            }
+            
             Array.Copy(bytes, 0, ret, (int)numberOfBytesArray - bytes.Length, bytes.Length);
+            
 
             return ret;
         }

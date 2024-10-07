@@ -5,9 +5,13 @@ using Nethereum.RPC.Eth.Services;
 using Nethereum.RPC.TransactionManagers;
 using System;
 using Nethereum.RPC.Eth.Transactions;
+using Nethereum.RPC.AccountSigning;
+using Nethereum.RPC.HostWallet;
+using Nethereum.RPC.Eth.ChainValidation;
 
 namespace Nethereum.RPC
 {
+
     public class EthApiService : RpcClientWrapper, IEthApiService
     {
         private BlockParameter _defaultBlock;
@@ -39,7 +43,12 @@ namespace Nethereum.RPC
             Uncles = new EthApiUncleService(client);
             Mining = new EthApiMiningService(client);
             Compile = new EthApiCompilerService(client);
-            FeeHistory = new EthFeeHistory(Client);
+            FeeHistory = new EthFeeHistory(client);
+            AccountSigning = new AccountSigningService(client);
+            HostWallet = new HostWalletService(client);
+            GetProof = new EthGetProof(client);
+            CreateAccessList = new EthCreateAccessList(client);
+            ChainProofValidation =   new EthChainProofValidationService(client, this);
 
             DefaultBlock = BlockParameter.CreateLatest();
             TransactionManager = transactionManager;
@@ -112,6 +121,15 @@ namespace Nethereum.RPC
         public IEthFeeHistory FeeHistory { get; private set; }
 
         public IEthApiCompilerService Compile { get; private set; }
+
+        public IHostWalletService HostWallet { get; private set; }
+
+        public IEthGetProof GetProof { get; private set; }
+
+        public IEthCreateAccessList CreateAccessList { get; private set; }
+
+        public IEthChainProofValidationService ChainProofValidation { get; private set; }
+
 #if !DOTNET35
         public virtual IEtherTransferService  GetEtherTransferService()
         {
@@ -121,14 +139,24 @@ namespace Nethereum.RPC
         public virtual ITransactionManager TransactionManager
         {
             get { return _transactionManager; }
-            set { _transactionManager = value; }
+            set { _transactionManager = value; 
+                if(_transactionManager.Account != null && _transactionManager.Account.AccountSigningService != null)
+                {
+                    this.AccountSigning = _transactionManager.Account.AccountSigningService;
+                }
+            
+            }
         }
+
+        public IAccountSigningService AccountSigning { get; set; }
 
         private void SetDefaultBlock()
         {
             GetBalance.DefaultBlock = DefaultBlock;
             GetCode.DefaultBlock = DefaultBlock;
             GetStorageAt.DefaultBlock = DefaultBlock;
+            GetProof.DefaultBlock = DefaultBlock;
+            CreateAccessList.DefaultBlock = DefaultBlock;
             Transactions.SetDefaultBlock(_defaultBlock);
         }
     }

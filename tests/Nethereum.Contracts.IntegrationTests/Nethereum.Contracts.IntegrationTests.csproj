@@ -3,11 +3,17 @@
   <PropertyGroup>
     <Description>Nethereum.Contracts.IntegrationTests </Description>
     <Authors>Juan Blanco</Authors>
-    <TargetFrameworks>netcoreapp3.1;netcoreapp2.1;net5.0</TargetFrameworks>
+	 <TargetFrameworks>net6.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Nethereum.Web3\Nethereum.Web3.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.EVM.Contracts\Nethereum.EVM.Contracts.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.EVM\Nethereum.EVM.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.Merkle.Patricia\Nethereum.Merkle.Patricia.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.Merkle\Nethereum.Merkle.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.RPC.Extensions\Nethereum.RPC.Extensions.csproj" />
+	  <ProjectReference Include="..\..\src\Nethereum.Web3\Nethereum.Web3.csproj" />
+    <ProjectReference Include="..\..\src\Nethereum.Geth\Nethereum.Geth.csproj" />
     <ProjectReference Include="..\Nethereum.XUnitEthereumClients\Nethereum.XUnitEthereumClients.csproj" />
   </ItemGroup>
 
@@ -20,15 +26,39 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Common.Logging" Version="3.4.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
-    <PackageReference Include="xunit" Version="2.3.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
+	  <PackageReference Include="ILogger.Moq" Version="1.1.10" />
+	  <PackageReference Include="IPLD.ContentIdentifier" Version="1.1.1" />
+	  <PackageReference Include="Multiformats.Codec" Version="1.1.2" />
+	  <PackageReference Include="Multiformats.Hash" Version="1.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.0-beta4-build3742" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="EVM\Traces\0x2ab5b72b40d8d004d40258e7a8296d512a0d805c1f73603ddba4069a80e40946.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EVM\Traces\0x763774a4a954d0deccf9d054ed8164cef1e6762a45cdc30457b5c2770c833300.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EVM\Traces\0x6669284f4072af03600f95bc4c1ed3499e1658dab87615cfd03775fea13a82b7.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EVM\Traces\0x763774a4a954d0deccf9d054ed8164cef1e6762a45cdc30457b5c2770c833300.zip">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EVM\Traces\0xb9f4e6e5c90329a43da70ced8e8974c3fa34e67e32283bfa82778296fa79dd98.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

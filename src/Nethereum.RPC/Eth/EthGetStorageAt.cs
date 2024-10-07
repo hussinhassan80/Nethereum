@@ -1,13 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
- 
+
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
 using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Eth.DTOs;
+using Newtonsoft.Json;
 
 namespace Nethereum.RPC.Eth
 {
+
+
     /// <Summary>
     ///     eth_getStorageAt
     ///     Returns the value from a storage position at a given address.
@@ -47,9 +51,10 @@ namespace Nethereum.RPC.Eth
         public Task<string> SendRequestAsync(string address, HexBigInteger position, BlockParameter block,
             object id = null)
         {
+
             if (address == null) throw new ArgumentNullException(nameof(address));
             if (position == null) throw new ArgumentNullException(nameof(position));
-            if (block == null) throw new ArgumentNullException(nameof(block));
+            if (block == null) block = DefaultBlock;
             return base.SendRequestAsync(id, address.EnsureHexPrefix(), position, block);
         }
 
